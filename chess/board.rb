@@ -49,24 +49,15 @@ class Board
   end
 
   def pawn_row(row, color)
-    pawns = Array.new(8)
-    pawns.each_index do |col|
-      pawns[col] = Pawn.new([row, col], color, self)
+    Array.new(8).each_index.map do |i|
+      Pawn.new([row, i], color, self)
     end
   end
 
   def first_row(row, color)
-
-    pieces = [Rook.new([row,0], color, self),
-    Knight.new([row,1], color, self),
-    Bishop.new([row,2], color, self),
-    Queen.new([row,3], color, self),
-    King.new([row,4], color, self),
-    Bishop.new([row,5], color, self),
-    Knight.new([row,6], color, self),
-    Rook.new([row,7], color, self)]
-
-    pieces
+    STARTING_ROW.each_with_index.map do |piece,i|
+      piece.new([row,i], color, self)
+    end
   end
 
   def null_row
@@ -87,7 +78,7 @@ class Board
     start_piece = self[start_pos]
 
     raise InvalidStartError.new if start_piece.empty?
-    raise InvalidEndError.new("Valid moves: #{start_piece.valid_moves}") unless start_piece.valid_moves.include?(end_pos)
+    raise InvalidEndError.new unless start_piece.valid_moves.include?(end_pos)
 
     self[end_pos] = start_piece
     self[start_pos] = NullPiece.instance
@@ -129,8 +120,9 @@ class Board
 
   def get_legal_moves(color)
     moves = []
-    pieces = self.grid.flatten.select { |piece| !piece.is_a?(NullPiece) && piece.color == color}
-
+    pieces = self.grid.flatten.select do |piece|
+      !piece.is_a?(NullPiece) && piece.color == color
+    end
 
     pieces.each { |piece| moves += piece.moves }
     moves
@@ -138,8 +130,9 @@ class Board
 
   def get_valid_moves(color)
     moves = []
-    pieces = self.grid.flatten.select { |piece| !piece.is_a?(NullPiece) && piece.color == color}
-
+    pieces = self.grid.flatten.select do |piece|
+      !piece.is_a?(NullPiece) && piece.color == color
+    end
 
     pieces.each { |piece| moves += piece.valid_moves }
     moves
