@@ -4,7 +4,7 @@ module Slideable
   def moves
     possible_directions = directions
     possible_moves = []
-    debugger
+
     possible_directions.each do |(row, col)|
       possible_moves.concat(grow_unblocked_moves_in_dir(row, col))
     end
@@ -34,9 +34,12 @@ module Slideable
   def grow_unblocked_moves_in_dir(dx,dy)
     moves = []
     blocked = false
-    new_pos = [self.position.first, self.position.last]
+    new_pos = self.position
     until blocked
-      new_pos = [new_pos.first + dx, new_pos.last + dx]
+      new_pos = apply_deltas(new_pos, [[dx, dy]]).first
+
+      break if new_pos.nil?
+
       if self.board[new_pos].empty?
         moves << new_pos
       else

@@ -2,6 +2,13 @@ require_relative 'pieces/piece.rb'
 require_relative 'pieces/null_piece.rb'
 require_relative 'display'
 require_relative 'pieces/bishop'
+require_relative 'pieces/knight'
+require_relative 'pieces/queen'
+require_relative 'pieces/rook'
+require_relative 'pieces/king'
+require_relative 'pieces/pawn'
+
+
 
 class MoveError < StandardError
 end
@@ -12,7 +19,10 @@ end
 class InvalidEndError < MoveError
 end
 
+
 class Board
+
+  STARTING_ROW = [Rook,Knight,Bishop,Queen,King,Bishop,Knight,Rook]
 
   attr_accessor :grid
 
@@ -21,18 +31,46 @@ class Board
   end
 
   def populate
-    grid.each_with_index do |row, row_idx|
-      row.each_index do |col_idx|
-        pos = [row_idx,col_idx]
-        if row_idx.between?(2,5)
-          self[pos] = NullPiece.instance
-        elsif row_idx.between?(0,1)
-          self[pos] = Piece.new(pos,:black, self)
-        else
-          self[pos] = Piece.new(pos,:white, self)
-        end
+    grid.each_index do |row_idx|
+      case row_idx
+      when 0
+        @grid[row_idx] = first_row(row_idx, :black)
+      when 1
+        @grid[row_idx] = pawn_row(row_idx, :black)
+      when 2,3,4,5
+        @grid[row_idx] = null_row
+      when 6
+        @grid[row_idx] = pawn_row(row_idx, :white)
+      when 7
+        @grid[row_idx] = first_row(row_idx, :white)
       end
     end
+
+  end
+
+  def pawn_row(row, color)
+    pawns = Array.new(8)
+    pawns.each_index do |col|
+      pawns[col] = Pawn.new([row, col], color, self)
+    end
+  end
+
+  def first_row(row, color)
+
+    pieces = [Rook.new([row,0], color, self),
+    Knight.new([row,1], color, self),
+    Bishop.new([row,2], color, self),
+    Queen.new([row,3], color, self),
+    King.new([row,4], color, self),
+    Bishop.new([row,5], color, self),
+    Knight.new([row,6], color, self),
+    Rook.new([row,7], color, self)]
+
+    pieces
+  end
+
+  def null_row
+    Array.new(8) { NullPiece.instance }
   end
 
   def [](pos)
@@ -47,32 +85,83 @@ class Board
 
   def move_piece(start_pos, end_pos)
     start_piece = self[start_pos]
-    raise InvalidStartError if start_piece.empty?
-    # raise InvalidEndError unless start_piece.valid_moves.include?(end_pos)
+
+    raise InvalidStartError.new if start_piece.empty?
+    raise InvalidEndError.new("Valid moves: #{start_piece.valid_moves}") unless start_piece.valid_moves.include?(end_pos)
 
     self[end_pos] = start_piece
-    self[start_pos] = NullPiece.new
+    self[start_pos] = NullPiece.instance
 
     start_piece.position = end_pos
+
+  end
+
+  def move_piece!(start_pos, end_pos)
+    start_piece = self[start_pos]
+
+    raise InvalidStartError.new if start_piece.empty?
+
+    self[end_pos] = start_piece
+    self[start_pos] = NullPiece.instance
+
+    start_piece.position = end_pos
+
   end
 
   def in_bounds?(pos)
     pos.all? { |dim| dim.between?(0,7) }
   end
 
-end
+  def in_check?(color)
+    flat_grid = self.grid.flatten
+    king = flat_grid.find { |piece| piece.is_a?(King) && piece.color == color }
 
-if __FILE__ == $PROGRAM_NAME
-  b = Board.new()
-  b.populate
+    opposing_moves = get_legal_moves( color == :black ? :white : :black )
 
-  bishop = Bishop.new([4,4], :white, b)
-  b[[4,4]] = bishop
+    opposing_moves.include?(king.position)
+  end
 
-  p bishop.moves
+  def checkmate?(color)
+    return false unless in_check?(color)
 
-  d = Display.new(b)
+    get_valid_moves(color).all?(&:empty?)
+  end
 
-  d.render
-  # d.move
+  def get_legal_moves(color)
+    moves = []
+    pieces = self.grid.flatten.select { |piece| !piece.is_a?(NullPiece) && piece.color == color}
+
+
+    pieces.each { |piece| moves += piece.moves }
+    moves
+  end
+
+  def get_valid_moves(color)
+    moves = []
+    pieces = self.grid.flatten.select { |piece| !piece.is_a?(NullPiece) && piece.color == color}
+
+
+    pieces.each { |piece| moves += piece.valid_moves }
+    moves
+  end
+
+  def dup
+    duped_board = Board.new
+
+    duped_board.grid.each_with_index do |row,row_idx|
+      row.each_index do |col_idx|
+        pos = [row_idx,col_idx]
+
+        if self[pos].empty?
+          duped_board[pos] = NullPiece.instance
+        else
+          duped_board[pos] = self[pos].dup
+          duped_board[pos].board = duped_board
+        end
+      end
+    end
+
+    duped_board
+  end
+
 end
